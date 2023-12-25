@@ -12,8 +12,10 @@ pub enum ChemfigParseError {
         found: char,
         span: Span,
     },
-    #[error("Expected {0}, found `EOF`")]
-    UnexpectedEOF(char),
+    #[error("Expected char, found `EOF`")]
+    UnexpectedEOF,
     #[error("Expected bond identifier (-, =, ≡, -[n]), found {0}")]
     InvalidBondIdent(char),
+    #[error("Expected element ident, found {0}")]
+    InvalidElementIdent(char),
 }

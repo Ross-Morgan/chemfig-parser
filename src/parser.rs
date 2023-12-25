@@ -11,7 +11,7 @@ pub struct ChemfigParser<'a> {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ChemfigToken {
-    Element(&'static str),
+    Element(String),
     AtomCount(usize),
     Bond(usize),
     Group(Vec<ChemfigToken>),
@@ -45,7 +45,7 @@ impl<'a> ChemfigParser<'a> {
     fn parse_one(&mut self, c: char) -> Result<(), ChemfigParseError> {
         match c {
             '(' => self.parse_group()?,
-            c if c.is_ascii_alphabetic() => self.parse_element()?,
+            c if c.is_ascii_uppercase() => self.parse_element()?,
             '-' | '=' | '≡' => self.parse_bond()?, 
             '_' => self.parse_number()?,
             _ => Err(ChemfigParseError::InvalidChar(c))?,
@@ -58,7 +58,7 @@ impl<'a> ChemfigParser<'a> {
         match self.char_stream.next() {
             Some((_, '(')) => Ok(()),
             Some((idx, c)) => Err(ChemfigParseError::UnenclosedGroup { expected: '(', found: c, span: Span::new(idx, idx + 1) }),
-            None => Err(ChemfigParseError::UnexpectedEOF('(')),
+            None => Err(ChemfigParseError::UnexpectedEOF),
         }?;
 
         self.tokens.push_token(ChemfigToken::GroupOpen);
@@ -76,10 +76,42 @@ impl<'a> ChemfigParser<'a> {
     }
 
     fn parse_element(&mut self) -> Result<(), ChemfigParseError> {
+        let mut buf = String::new();
+        
+        match self.char_stream.next() {
+            Some((_, c)) if c.is_ascii_uppercase() => buf.push(c),
+            Some((_, c)) => Err(ChemfigParseError::InvalidElementIdent(c))?,
+            None => Err(ChemfigParseError::UnexpectedEOF)?,
+        };
+        
+        while let Some(&(_, c)) = self.char_stream.peek() {
+            if !c.is_ascii_lowercase() {
+                return Err(ChemfigParseError::InvalidElementIdent(c));
+            }
+
+            buf.push(c);
+
+            let _ = self.char_stream.next().expect("We literally just peeked this :skull:");
+        }
+
+        self.tokens.push_token(ChemfigToken::Element(buf));
+
         Ok(())
     }
 
     fn parse_number(&mut self) -> Result<(), ChemfigParseError> {
+        match self.char_stream.next() {
+            Some((_, '_')) => (),
+            Some((_, c)) => Err(ChemfigParseError::InvalidChar(c))?,
+            None => Err(ChemfigParseError::UnexpectedEOF)?,
+        };
+
+        while let Some(&(_, c @ '0'..='9')) = self.char_stream.peek() {
+
+
+            let _ = self.char_stream.next().expect("Just peeked it");
+        }
+
         Ok(())
     }
 
@@ -89,7 +121,7 @@ impl<'a> ChemfigParser<'a> {
             Some((_, '≡')) => self.tokens.push_token(ChemfigToken::Bond(3)),
             Some((_, '-')) => (),
             Some((_, c)) => Err(ChemfigParseError::InvalidBondIdent(c))?,
-            None => Err(ChemfigParseError::UnexpectedEOF('-'))?,
+            None => Err(ChemfigParseError::UnexpectedEOF)?,
         };
 
         if let Some(&(_, c)) = self.char_stream.peek() {
@@ -135,9 +167,4 @@ impl ChemfigTokenTree {
     pub fn push_token(&mut self, token: ChemfigToken) {
         self.0.push(token);
     }
-}
-
-fn f() {
-    let tree = ChemfigParser::parse("C(-H)");
-
 }
