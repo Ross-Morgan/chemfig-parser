@@ -106,11 +106,18 @@ impl<'a> ChemfigParser<'a> {
             None => Err(ChemfigParseError::UnexpectedEOF)?,
         };
 
-        while let Some(&(_, c @ '0'..='9')) = self.char_stream.peek() {
+        let mut n = 0usize;
 
+        while let Some(&(_, c @ '0'..='9')) = self.char_stream.peek() {
+            let d = c.to_digit(10).expect("Bounds guaranteed") as usize;
+
+            n *= 10;
+            n += d;
 
             let _ = self.char_stream.next().expect("Just peeked it");
         }
+
+        self.tokens.push_token(ChemfigToken::AtomCount(n));
 
         Ok(())
     }
