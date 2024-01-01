@@ -7,5 +7,5 @@ pub struct Span {
 impl Span {
     pub const fn new(from: usize, to: usize) -> Self {
         Self { from, to }
-    } 
+    }
 }
